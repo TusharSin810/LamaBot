@@ -1,6 +1,7 @@
 import { Telegraf, Markup } from "telegraf";
 import { Wallet } from "./wallet";
 import { prismaClient } from "./db";
+import { balance } from "./balance";
 
 if(!process.env.BOT_TOKEN) throw new Error(`Bot Token Does Not Exist`);
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -11,7 +12,6 @@ const keyboard = Markup.inlineKeyboard([
     ],
     [
         Markup.button.callback('👁️ View Address', 'view_address'),
-        Markup.button.callback('🔐 Export Private Key', 'export_private_key')
     ],
     [
         Markup.button.callback('💰 Check Balance', 'check_balance'),
@@ -82,6 +82,22 @@ bot.action("view_address", async (ctx) => {
 
     await ctx.reply(`Your Address Is : ${pubKey}`);
 })
+
+bot.action("check_balance", async (ctx) => {
+    ctx.answerCbQuery(`Getting Your Address ...`);
+    const userId = ctx.from?.id.toString();
+    const user = await prismaClient.user.findFirst({
+        where:{
+            userId:userId
+        }
+    });
+    const pubKey = user?.pubKey;    
+
+    const acc_balance = await balance(pubKey!);
+
+    ctx.reply(`Your Current Solana Balance Is : ${acc_balance}`);
+})
+
 
 await bot.launch(() => {
     console.log(`Bot Started`)

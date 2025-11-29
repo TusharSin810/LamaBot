@@ -19,5 +19,6 @@ export const Wallet = async (userId: string, userName: string) => {
             privateKey: hash
             }
     })
+
     return pubKey;
 }
