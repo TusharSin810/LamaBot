@@ -1,6 +1,7 @@
 import { Telegraf, Markup } from "telegraf";
 import { prismaClient } from "./db";
 import { Keypair } from "@solana/web3.js";
+import { Wallet } from "./wallet";
 
 if(!process.env.BOT_TOKEN) throw new Error(`Bot Token Does Not Exist`);
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -56,18 +57,8 @@ bot.action("generate_wallet", async (ctx) => {
     ctx.answerCbQuery(`Generating a New Wallet For You ...`);
     const userId = ctx.from?.id.toString();
     const userName = ctx.from?.first_name;
-    const keypair = new Keypair();
-
-    await prismaClient.user.create({
-        data:{
-            userId: userId,
-            userName: userName,
-            pubKey: keypair.publicKey.toBase58(),
-            privateKey: keypair.secretKey.toBase64()
-        }
-    })
-
-    ctx.sendMessage(`New Wallet Created For U With Public Key : ${keypair.publicKey}`);
+    const wallet = await Wallet(userId, userName);
+    ctx.sendMessage(`New Wallet Created For U With Public Key : ${wallet}`);
 })
 
 await bot.launch(() => {
