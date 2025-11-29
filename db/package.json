@@ -1,7 +1,10 @@
 {
-  "name": "lamabot",
+  "name": "db",
   "module": "index.ts",
   "type": "module",
+  "exports": {
+    "./client": "./index.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -9,8 +12,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@solana/web3.js": "^1.98.4",
-    "db": "*",
-    "telegraf": "^4.16.3"
+    "@prisma/adapter-pg": "^7.0.1",
+    "@prisma/client": "^7.0.1",
+    "prisma": "^7.0.1"
   }
 }
