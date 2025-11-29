@@ -2,6 +2,8 @@ import { Telegraf, Markup } from "telegraf";
 import { Wallet } from "./wallet";
 import { prismaClient } from "./db";
 import { balance } from "./balance";
+import { format } from "./format";
+import { transaction } from "./transaction";
 
 if(!process.env.BOT_TOKEN) throw new Error(`Bot Token Does Not Exist`);
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -98,6 +100,27 @@ bot.action("check_balance", async (ctx) => {
     ctx.reply(`Your Current Solana Balance Is : ${acc_balance}`);
 })
 
+bot.action("tx_history", async (ctx) => {
+    ctx.answerCbQuery(`Getting All Your Transaction History ...`);
+    const userId = ctx.from?.id.toString();
+    const user = await prismaClient.user.findFirst({
+        where:{
+            userId:userId
+        }
+    });
+    const pubKey = user?.pubKey;
+    const txn = await transaction(pubKey!);
+    const maxToShow = 5
+    const chunks = txn.slice(0, maxToShow).map((tx, idx) => {
+    return `#${idx + 1}\n${format(tx)}`;
+  });
+
+  const message = `📜 Recent Transactions (${chunks.length}):\n\n${chunks.join(
+    "\n\n──────────────\n\n"
+  )}`;
+
+  await ctx.reply(message, { parse_mode: "Markdown" });
+})
 
 await bot.launch(() => {
     console.log(`Bot Started`)
