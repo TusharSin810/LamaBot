@@ -32,7 +32,6 @@ const keyboard = Markup.inlineKeyboard([
     ],
     [
         Markup.button.callback('💸 Send SOL', 'send_sol'),
-        Markup.button.callback('🪙 Send Token', 'send_token_menu')
     ]
 ])
 
@@ -142,7 +141,7 @@ bot.action("send_sol", (ctx) => {
     }
 });
 
-bot.on(message("text"), (ctx) => {
+bot.on(message("text"), async (ctx) => {
     const userId = ctx.from?.id.toString();
     if (PENDING_REQ[userId]?.type === "SEND_SOL") {
 
@@ -162,8 +161,29 @@ bot.on(message("text"), (ctx) => {
             }
             PENDING_REQ[userId].amount = amount;
             ctx.sendMessage(`Initiated A Transaction For ${amount} SOL To ${PENDING_REQ[userId].to}`);
+                const result = await send_sol(PENDING_REQ[userId].amount!, PENDING_REQ[userId].to!, userId);
+                    if (result.success) {
+                        await ctx.reply(
+                            `✅ *Transaction Successful!*\n\n` +
+                            `💸 Amount: *${PENDING_REQ[userId].amount} SOL*\n` +
+                            `📍 To: \`${PENDING_REQ[userId].to}\`\n` +
+                            `🔗 Tx Signature: \`${result.signature}\``,
+                            { parse_mode: "Markdown" }
+                        );
+                    } else {
+                        await ctx.reply(
+                            `❌ *Transaction Failed*\n\nReason: ${result.error}`,
+                            { parse_mode: "Markdown" }
+                        );
+                    }
+            delete PENDING_REQ[userId];
+            return ctx.reply(welcomeMessage, {
+                    parse_mode: 'Markdown',
+                    ...keyboard
+            });
+
         }
-        const send_txn = send_sol(PENDING_REQ[userId].amount!, PENDING_REQ[userId].to!, userId);
+
     }
 });
 
