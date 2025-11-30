@@ -1,12 +1,23 @@
-import { Telegraf, Markup } from "telegraf";
+import { Telegraf, Markup, Input } from "telegraf";
 import { Wallet } from "./wallet";
 import { prismaClient } from "./db";
 import { balance } from "./balance";
 import { format } from "./format";
 import { transaction } from "./transaction";
+import { message } from "telegraf/filters";
+import { PublicKey } from "@solana/web3.js";
+import { send_sol } from "./send_sol";
 
 if(!process.env.BOT_TOKEN) throw new Error(`Bot Token Does Not Exist`);
 const bot = new Telegraf(process.env.BOT_TOKEN);
+
+interface PendingReqType {
+    type: "SEND_SOL" | "SEND_TOKEN",
+    amount?: number,
+    to?: string
+}
+
+const PENDING_REQ: Record<string, PendingReqType> = {};
 
 const keyboard = Markup.inlineKeyboard([
     [
@@ -20,7 +31,7 @@ const keyboard = Markup.inlineKeyboard([
         Markup.button.callback('📊 Transaction History', 'tx_history')
     ],
     [
-        Markup.button.callback('💸 Send SOL', 'send_sol_menu'),
+        Markup.button.callback('💸 Send SOL', 'send_sol'),
         Markup.button.callback('🪙 Send Token', 'send_token_menu')
     ]
 ])
@@ -121,6 +132,41 @@ bot.action("tx_history", async (ctx) => {
 
   await ctx.reply(message, { parse_mode: "Markdown" });
 })
+
+bot.action("send_sol", (ctx) => {
+    const userId = ctx.from?.id;
+    ctx.answerCbQuery(`Transaction Initiated`);
+    ctx.sendMessage(`Can You Please Share The Address : `)
+    PENDING_REQ[userId] = {
+        type: "SEND_SOL"
+    }
+});
+
+bot.on(message("text"), (ctx) => {
+    const userId = ctx.from?.id.toString();
+    if (PENDING_REQ[userId]?.type === "SEND_SOL") {
+
+        if (PENDING_REQ[userId] && !PENDING_REQ[userId].to) {
+            const input = ctx.message.text;
+            try {
+                new PublicKey(input);
+                PENDING_REQ[userId].to = input;
+                ctx.sendMessage(`Please provide the amount you want to send:`);
+            } catch (err) {
+                ctx.sendMessage(`❌ Invalid Solana address.\nPlease re-enter a valid address:`);  
+            }
+        } else {
+            const amount = Number(ctx.message.text);
+            if (isNaN(amount) || amount <= 0) {
+                return ctx.sendMessage(`❌ Invalid amount. Please enter a valid number:`);
+            }
+            PENDING_REQ[userId].amount = amount;
+            ctx.sendMessage(`Initiated A Transaction For ${amount} SOL To ${PENDING_REQ[userId].to}`);
+        }
+        const send_txn = send_sol(PENDING_REQ[userId].amount!, PENDING_REQ[userId].to!, userId);
+    }
+});
+
 
 await bot.launch(() => {
     console.log(`Bot Started`)
